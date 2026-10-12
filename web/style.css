@@ -101,7 +101,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .main {
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 3rem 1.25rem 7rem;
+  padding: 3rem 1.25rem 1.5rem;
 }
 .main h1 { font-size: 2.2rem; margin: 0 0 0.25rem; line-height: 1.2; }
 .caption { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.5rem; }
@@ -141,11 +141,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 
 .chat-input {
-  position: fixed;
-  bottom: 1.25rem;
-  left: calc(300px + (100vw - 300px - min(760px, 100vw - 300px)) / 2);
-  width: min(760px - 2.5rem, calc(100vw - 300px - 2.5rem));
-  margin-left: 1.25rem;
+  position: sticky;
+  bottom: 1rem;
+  margin-top: 1.5rem;
   display: flex;
   gap: 0.5rem;
   padding: 0.4rem;
@@ -170,7 +168,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .sidebar { display: none; padding-top: 1.25rem; }
   body.sidebar-open .sidebar { display: flex; }
   .menu { display: inline-block; margin-bottom: 1rem; }
-  .main { padding: 1.25rem 1rem 6rem; }
+  .main { padding: 1.25rem 1rem 1rem; }
   .main h1 { font-size: 1.7rem; }
-  .chat-input { left: 1rem; right: 1rem; width: auto; margin: 0; bottom: 0.75rem; }
 }
