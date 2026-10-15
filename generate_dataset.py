@@ -279,7 +279,7 @@ def main():
     with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
     with open(OUT_PATH, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["id", "category", "subcategory", "title", "content", "tags", "source_url", "source_group", "record_type"])
+        writer = csv.DictWriter(f, fieldnames=["id", "category", "subcategory", "title", "content", "tags", "source_url", "source_group", "record_type"], lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 

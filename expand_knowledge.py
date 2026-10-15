@@ -40,7 +40,7 @@ class LessonBlocks(HTMLParser):
         if tag != self.active:
             return
         raw = "".join(self.buffer).strip()
-        text = raw if tag == "pre" else " ".join(raw.split())
+        text = "\n".join(line.rstrip() for line in raw.splitlines()) if tag == "pre" else " ".join(raw.split())
         if tag in ("h2", "h3", "h4"):
             self.heading = text
         elif 80 <= len(text) <= 3000:
