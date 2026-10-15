@@ -1,0 +1,18 @@
+{
+  "records": 1049,
+  "categories": {
+    "Electronics": 317,
+    "Robotics": 163,
+    "PCB Design": 153,
+    "Digital Logic Design": 416
+  },
+  "record_types": {
+    "original_reference": 129,
+    "lesson_passage": 655,
+    "code": 137,
+    "generated_worked_example": 128
+  },
+  "source_lessons_commit": "c5fa04da7f8be79333d44a78d2cda816b7c94075",
+  "source_lessons_repository": "munsakad/Hardware-Engineering-Education-Hub",
+  "note": "Counts are retrieval records, not independent knowledge areas or measured observations."
+}

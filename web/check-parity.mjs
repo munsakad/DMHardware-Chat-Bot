@@ -11,11 +11,12 @@ const parity = JSON.parse(readFileSync(join(dir, "parity.json"), "utf8"));
 const retriever = createRetriever(index);
 
 let failures = 0;
-for (const { q, top } of parity) {
+for (const { q, top, topics } of parity) {
   const js = retriever.retrieve(q, 5);
   const sameLength = js.length === top.length;
   const ok =
     sameLength &&
+    Object.entries(topics || {}).every(([label,score]) => Math.abs(retriever.classify(q)[label]-score) < 1e-5) &&
     top.every((p, i) => {
       const r = js[i];
       // allow equal-score ties to come back in either order

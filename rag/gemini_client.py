@@ -11,7 +11,7 @@ import os
 from google import genai
 from google.genai import types
 
-DEFAULT_MODEL = "gemini-3.5-flash"  # swap to any model your API key has access to
+DEFAULT_MODEL = "gemini-3.5-flash-lite"  # swap to any model your API key has access to
 
 SYSTEM_INSTRUCTION = """You are DMHardware AI Chatbot, a domain expert assistant for \
 Electronics, Robotics, PCB Design, and Digital Logic Design.

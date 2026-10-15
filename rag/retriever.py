@@ -57,10 +57,12 @@ class RetrievedRecord:
     subcategory: str
     content: str
     score: float
+    source_url: str = ""
+    record_type: str = "original_reference"
 
 
 class KnowledgeRetriever:
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, use_topic=True):
         self.df = df.reset_index(drop=True)
         self.vectorizer = TfidfVectorizer(
             tokenizer=_stemming_tokenizer,
@@ -70,6 +72,17 @@ class KnowledgeRetriever:
             token_pattern=None,
         )
         self.matrix = self.vectorizer.fit_transform(self.df["search_text"])
+        self.topic_model = None
+        if use_topic:
+            from rag.topic_model import TopicModel
+            self.topic_model = TopicModel(self.vectorizer)
+
+    def classify(self, query):
+        vector = self.vectorizer.transform([query])
+        if not self.topic_model or not vector.nnz:
+            return None
+        probabilities = self.topic_model.probabilities(vector)
+        return dict(zip(self.topic_model.labels, probabilities))
 
     def retrieve(self, query: str, top_k: int = 5, min_score: float = 0.05) -> List[RetrievedRecord]:
         if not query or not query.strip():
@@ -77,12 +90,16 @@ class KnowledgeRetriever:
 
         query_vec = self.vectorizer.transform([query])
         scores = cosine_similarity(query_vec, self.matrix).flatten()
-
-        top_indices = scores.argsort()[::-1][:top_k]
+        lexical = scores.copy()
+        if self.topic_model and query_vec.nnz:
+            probabilities = dict(zip(self.topic_model.labels, self.topic_model.probabilities(query_vec)))
+            # Soft reranking only: never discard a record solely for its domain.
+            scores *= self.df.category.map(lambda c: 0.85 + 0.15 * probabilities.get(c, 0)).to_numpy()
+        top_indices = sorted(range(len(scores)), key=lambda i: (-scores[i], i))[:top_k]
 
         results = []
         for i in top_indices:
-            if scores[i] < min_score:
+            if lexical[i] < min_score:
                 continue
             row = self.df.iloc[i]
             results.append(
@@ -92,6 +109,8 @@ class KnowledgeRetriever:
                     subcategory=row["subcategory"],
                     content=row["content"],
                     score=float(scores[i]),
+                    source_url=row.get("source_url", ""),
+                    record_type=row.get("record_type", "original_reference"),
                 )
             )
         return results
@@ -104,5 +123,5 @@ class KnowledgeRetriever:
 
         chunks = []
         for r in records:
-            chunks.append(f"[{r.category} / {r.subcategory}] {r.title}: {r.content}")
+            chunks.append(f"[{r.category} / {r.subcategory}] {r.title}: {r.content}\nSource: {r.source_url}")
         return "\n".join(chunks)

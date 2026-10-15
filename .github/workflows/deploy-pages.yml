@@ -31,12 +31,18 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp web/index.html web/app.js web/retriever.js web/style.css _site/
+          cp web/index.html web/app.js web/retriever.js web/style.css web/knowledge.html web/knowledge.js _site/
 
       - name: Build the retrieval index with the Python retriever
         run: |
           pip install "pandas>=2.0" "numpy>=1.24" "scikit-learn>=1.3"
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python generate_dataset.py
+          python train_topic_model.py
+          python -m unittest -v test_pipeline
           python web/export_index.py _site
+          cp data/manifest.json data/knowledge_base.csv _site/
+          cp models/metrics.json _site/model-metrics.json
 
       - name: Verify the JS retriever matches Python
         run: node web/check-parity.mjs _site

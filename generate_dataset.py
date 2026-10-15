@@ -8,7 +8,10 @@ Every record below is ORIGINAL reference content (written for this project,
 not copied from any book/article/datasheet), organized as short,
 retrieval-friendly chunks: one clear concept per row.
 
-HOW TO GROW THIS TO 1,000+ RECORDS:
+DATA SOURCES: Original references plus sourced lesson passages and labeled
+worked calculations from expand_knowledge.py. Regeneration checks uniqueness.
+
+HOW TO ADD MORE RECORDS:
   1. Add more dicts to any of the *_records lists below, OR
   2. Drop your own notes/datasheets/course material into data/raw_sources/
      (as .txt or .csv) and extend `load_extra_sources()` at the bottom to
@@ -22,6 +25,9 @@ Schema (columns written to knowledge_base.csv):
 
 import csv
 import os
+import json
+from collections import Counter
+from expand_knowledge import expanded_records
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "data")
 OUT_PATH = os.path.join(OUT_DIR, "knowledge_base.csv")
@@ -251,8 +257,29 @@ def main():
         })
         next_id += 1
 
+    for row in rows:
+        row.setdefault("source_url", "https://github.com/munsakad/DMHardware-Chat-Bot/blob/main/generate_dataset.py")
+        row.setdefault("source_group", "original:" + row["title"])
+        row.setdefault("record_type", "original_reference")
+    rows.extend(expanded_records())
+    unique = {}
+    for row in rows:
+        key = " ".join(row["content"].split()).lower()
+        if key and key not in unique:
+            unique[key] = row
+    rows = list(unique.values())
+    for index, row in enumerate(rows, 1):
+        row["id"] = index
+    assert len(rows) >= 1000, f"Only {len(rows)} unique records"
+    manifest = {"records": len(rows), "categories": dict(Counter(r["category"] for r in rows)),
+                "record_types": dict(Counter(r["record_type"] for r in rows)),
+                "source_lessons_commit": "c5fa04da7f8be79333d44a78d2cda816b7c94075",
+                "source_lessons_repository": "munsakad/Hardware-Engineering-Education-Hub",
+                "note": "Counts are retrieval records, not independent knowledge areas or measured observations."}
+    with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
     with open(OUT_PATH, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["id", "category", "subcategory", "title", "content", "tags"])
+        writer = csv.DictWriter(f, fieldnames=["id", "category", "subcategory", "title", "content", "tags", "source_url", "source_group", "record_type"])
         writer.writeheader()
         writer.writerows(rows)
 

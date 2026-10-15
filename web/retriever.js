@@ -26,8 +26,8 @@ export function createRetriever(index) {
   const stopWords = new Set(index.stop_words);
   const vocab = new Map(Object.entries(index.vocab));
 
-  function retrieve(query, topK = 5, minScore = 0.05) {
-    if (!query || !query.trim()) return [];
+  function vectorize(query) {
+    if (!query || !query.trim()) return new Map();
     const counts = new Map();
     for (const gram of analyze(query, stopWords)) {
       const j = vocab.get(gram);
@@ -41,7 +41,30 @@ export function createRetriever(index) {
       norm += v * v;
     }
     norm = Math.sqrt(norm);
-    if (!norm) return [];
+    if (!norm) return new Map();
+    return new Map([...q].map(([j,v]) => [j,v/norm]));
+  }
+
+  function topicScores(q) {
+    if (!q.size || !index.topic_model) return null;
+    const model = index.topic_model;
+    const logits = model.weight.map((row,i) => {
+      let sum=model.bias[i];
+      for (const [j,v] of q) sum+=row[j]*v;
+      return sum;
+    });
+    const max=Math.max(...logits);
+    const exp=logits.map(v=>Math.exp(v-max));
+    const total=exp.reduce((a,b)=>a+b,0);
+    return Object.fromEntries(model.labels.map((label,i)=>[label,exp[i]/total]));
+  }
+
+  function classify(query) { return topicScores(vectorize(query)); }
+
+  function retrieve(query, topK = 5, minScore = 0.05) {
+    const q=vectorize(query);
+    if (!q.size) return [];
+    const topics=topicScores(q);
 
     // document rows are stored flat: [termIndex, weight, termIndex, weight, ...]
     const scored = index.docs.map((row, i) => {
@@ -50,20 +73,21 @@ export function createRetriever(index) {
         const v = q.get(row[k]);
         if (v) s += v * row[k + 1];
       }
-      return [s / norm, i];
+      const multiplier=topics ? 0.85+0.15*(topics[index.records[i].category]||0) : 1;
+      return [s*multiplier, i, s];
     });
     scored.sort((a, b) => b[0] - a[0]);
     return scored
       .slice(0, topK)
-      .filter(([score]) => score >= minScore)
+      .filter(([, , lexical]) => lexical >= minScore)
       .map(([score, i]) => ({ ...index.records[i], score }));
   }
 
-  return { size: index.records.length, retrieve };
+  return { size: index.records.length, retrieve, classify, model: index.topic_model?.metrics, manifest: index.manifest };
 }
 
 // same format as KnowledgeRetriever.format_context
 export function formatContext(records) {
   if (!records.length) return "No directly relevant records were found in the knowledge base.";
-  return records.map((r) => "[" + r.category + " / " + r.subcategory + "] " + r.title + ": " + r.content).join("\n");
+  return records.map((r) => "[" + r.category + " / " + r.subcategory + "] " + r.title + ": " + r.content + "\nSource: " + (r.source_url || "")).join("\n");
 }

@@ -16,6 +16,9 @@
       <aside class="sidebar" id="sidebar">
         <h2>Settings</h2>
         <p>📚 Knowledge base: <strong id="kb-size">…</strong> records</p>
+        <p><a href="knowledge.html">Explore records and their sources</a></p>
+        <p id="model-evidence" class="caption" role="status">Loading model details…</p>
+        <p id="topic-status" class="caption" aria-live="polite"></p>
 
         <div id="key-status" class="status" role="status"></div>
         <form id="key-form" class="key-form" hidden>
@@ -30,7 +33,7 @@
         <button id="key-clear" class="secondary" type="button" hidden>Remove key</button>
 
         <label for="model">Gemini model</label>
-        <input id="model" value="gemini-2.5-flash" spellcheck="false" />
+        <input id="model" value="gemini-3.5-flash-lite" spellcheck="false" />
 
         <label for="top-k">Records to retrieve per question: <output id="top-k-value" for="top-k">5</output></label>
         <input id="top-k" type="range" min="1" max="10" value="5" />
@@ -41,9 +44,10 @@
 
         <div class="about">
           <strong>About this demo</strong>
-          <p>Browser build of the Streamlit app in this repo. CI builds the TF-IDF index with the same Python
-            retriever and exports it; your question is matched in the browser, then sent with the retrieved
-            context to Gemini.</p>
+          <p>TF-IDF retrieves engineering passages. A trained PyTorch topic classifier provides a small ranking prior.
+            This browser build runs the exported weights in JavaScript; the local app runs PyTorch inference.
+            Gemini writes answers using the retrieved context.</p>
+          <p><a href="manifest.json">Dataset manifest</a> · <a href="model-metrics.json">Training evaluation</a> · <a href="knowledge_base.csv" download>Download records</a></p>
           <a href="https://github.com/munsakad/DMHardware-Chat-Bot" target="_blank" rel="noopener">Source on GitHub</a>
         </div>
       </aside>

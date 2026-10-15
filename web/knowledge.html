@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Knowledge explorer | DMHardware</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="knowledge.js"></script>
+</head>
+<body>
+  <main class="explorer">
+    <a href="index.html">← Back to chat</a>
+    <h1>Explore the knowledge base</h1>
+    <p>Search the actual indexed records. These are reference passages and worked examples across four domains, not 1,000 separate subject areas.</p>
+    <p id="corpus-summary" role="status">Loading records…</p>
+    <div class="explorer-filters">
+      <label>Search title or content <input id="record-search" type="search" placeholder="e.g. voltage divider"></label>
+      <label>Domain <select id="record-category"><option value="">All domains</option></select></label>
+    </div>
+    <p id="record-count" aria-live="polite"></p>
+    <div id="record-list"></div>
+    <button id="more-records" type="button" hidden>Show 20 more</button>
+  </main>
+</body>
+</html>

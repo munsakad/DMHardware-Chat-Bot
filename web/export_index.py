@@ -65,6 +65,8 @@ def main(out_dir):
                 "category": r["category"],
                 "subcategory": r["subcategory"],
                 "content": r["content"],
+                "source_url": r["source_url"],
+                "record_type": r["record_type"],
             }
             for _, r in df.iterrows()
         ],
@@ -72,9 +74,11 @@ def main(out_dir):
         "idf": [round(float(x), 7) for x in vec.idf_],
         "stop_words": sorted(vec.get_stop_words() or []),
         "docs": docs,
+        "topic_model": retriever.topic_model.artifact,
+        "manifest": json.loads((ROOT / "data/manifest.json").read_text(encoding="utf-8")),
     }
     parity = [
-        {"q": q, "top": [{"title": r.title, "score": round(r.score, 6)} for r in retriever.retrieve(q, top_k=5)]}
+        {"q": q, "topics": retriever.classify(q), "top": [{"title": r.title, "score": round(r.score, 6)} for r in retriever.retrieve(q, top_k=5)]}
         for q in PARITY_QUERIES
     ]
 

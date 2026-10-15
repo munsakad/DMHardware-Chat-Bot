@@ -1,125 +1,70 @@
 # DMHardware AI Chatbot
 
-A Gemini-powered chatbot grounded in a curated knowledge base covering
-**Electronics, Robotics, PCB Design, and Digital Logic Design**.
+A hardware-engineering RAG assistant with **1,049 deduplicated knowledge records**, TF-IDF retrieval, a **trained PyTorch topic classifier**, and Gemini generation. [Live demo](https://munsakad.github.io/DMHardware-Chat-Bot/) ? [Knowledge explorer](https://munsakad.github.io/DMHardware-Chat-Bot/knowledge.html)
 
-Built with a retrieval-augmented generation (RAG) pipeline:
-- **Data preprocessing:** pandas / NumPy (cleaning, dedup, normalization)
-- **Retrieval:** scikit-learn TF-IDF + cosine similarity, anchoring Gemini's
-  answers in domain-specific engineering context
-- **Generation:** Google Gemini API (`google-genai` SDK)
-- **UI:** Streamlit local web app
+## What the dataset count means
 
----
+The count is retrieval records across **four domains**, not 1,049 independent knowledge areas:
 
-## 1. Project structure
+| Domain | Records |
+| --- | ---: |
+| Electronics (including embedded/Arduino) | 317 |
+| Digital Logic Design (including Verilog/VHDL) | 416 |
+| PCB Design | 153 |
+| Robotics | 163 |
+| Total | 1,049 |
 
-```
-DMHardware-AI-Chatbot/
-├── app.py                  # Streamlit chat UI (run this)
-├── generate_dataset.py     # Builds/regenerates data/knowledge_base.csv
-├── requirements.txt
-├── .env.example            # Copy to .env and add your Gemini API key
-├── data/
-│   ├── knowledge_base.csv  # The curated knowledge base (129 starter records)
-│   └── raw_sources/        # (optional) drop your own CSVs here to expand the KB
-└── rag/
-    ├── preprocess.py        # pandas/NumPy cleaning pipeline
-    ├── retriever.py          # scikit-learn TF-IDF retrieval logic
-    └── gemini_client.py      # Gemini API wrapper + prompt construction
-```
+The original repository had 129 references and no PyTorch implementation. This expansion adds 792 distinct passages/code examples from the owner's 120 Hardware Education Hub lessons and 128 explicitly labeled generated engineering calculations. These are not externally measured observations or an independently reviewed textbook corpus.
 
-## 2. Setup (VS Code, local machine)
+Every record includes a source URL, source group, and record type. The lesson snapshot in data/source_lessons.json comes from munsakad/Hardware-Engineering-Education-Hub at commit c5fa04da7f8be79333d44a78d2cda816b7c94075. expand_knowledge.py extracts complete paragraphs, list items, code blocks, and tables; it does not create paraphrases to increase the count. The worked examples state their assumptions and formulas. generate_dataset.py removes duplicate normalized content and writes data/manifest.json. The UI displays the cleaned indexed count.
 
-1. **Unzip/move this folder** wherever you keep projects, then open it in VS Code
-   (`File > Open Folder...`).
+## What PyTorch does
 
-2. **Create a virtual environment** (VS Code terminal — View > Terminal):
+train_topic_model.py trains a four-class linear classifier with PyTorch AdamW and cross-entropy over TF-IDF features from title and content. Category names/tags are excluded from classifier training inputs. Source lessons and formula families are kept together in the holdout split, so related passages/cases do not straddle training and validation.
 
-   ```bash
-   python -m venv .venv
-   # Windows:
-   .venv\Scripts\activate
-   # macOS/Linux:
-   source .venv/bin/activate
-   ```
+Evaluation is a reproducible 20% grouped holdout (the first fold of five). models/metrics.json reports accuracy, macro F1, majority baseline, split sizes, and limitations. Vocabulary and IDF are fitted to the full unlabeled corpus: this is in-corpus topic classification, not a test of answer correctness, engineering reasoning, or retrieval relevance. After evaluation, the deployment model is refitted on all records.
 
-3. **Install dependencies:**
+At query time:
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. TF-IDF produces lexical similarity scores.
+2. The trained model predicts Electronics, Robotics, PCB Design, or Digital Logic Design.
+3. Each lexical score is multiplied by 0.85 + 0.15 ? the model's score for that record's domain. This is a soft prior; it does not exclude other domains.
+4. Retrieved passages and source URLs ground Gemini's answer.
 
-4. **Get a Gemini API key:** https://aistudio.google.com/apikey
+The Streamlit app performs model inference with PyTorch. GitHub Pages runs the exported weights with equivalent JavaScript math; **PyTorch itself is not running inside the browser**. The deployment checks both model outputs and final retrieval scores against Python. Displayed softmax scores are not calibrated confidence. Gemini is the answer generator; the PyTorch classifier is a small topic model, not a language model.
 
-5. **Set your key:** copy `.env.example` to `.env` and paste your key in:
+## Run locally
 
-   ```bash
-   cp .env.example .env       # macOS/Linux
-   copy .env.example .env     # Windows
-   ```
+Use Python 3.12+ and create a project virtual environment, then:
 
-   Then edit `.env` so it reads:
-   ```
-   GEMINI_API_KEY=your_real_key_here
-   ```
-
-6. **Run the app:**
-
-   ```bash
-   streamlit run app.py
-   ```
-
-   It will open in your browser at `http://localhost:8501`.
-
-## 3. Using the chatbot
-
-- Ask questions about electronics, robotics, PCB design, or digital logic.
-- The sidebar shows how many records are in the knowledge base, lets you
-  adjust the Gemini model name and how many records are retrieved per
-  question, and has a debug toggle to see exactly which context was
-  retrieved for a given answer.
-- Chat history persists within a session; click "Clear chat" to reset.
-
-## 4. Growing the knowledge base past 1,000+ records
-
-The starter dataset (`data/knowledge_base.csv`) has 129 original,
-hand-curated records so the pipeline works out of the box. To scale it up:
-
-**Option A — add more curated entries directly:**
-Edit `generate_dataset.py` and add more `(subcategory, title, content)`
-tuples to any of the four category lists, then re-run:
-```bash
+```sh
+pip install -r requirements.txt
 python generate_dataset.py
+python train_topic_model.py
+python -m unittest -v test_pipeline
+streamlit run app.py
 ```
 
-**Option B — bring your own sources:**
-Create CSV files in `data/raw_sources/` with columns
-`category, subcategory, title, content` (one row per fact/concept — keep
-each entry focused on a single idea for best retrieval quality), then
-re-run `python generate_dataset.py`. It will automatically merge them in.
+Copy .env.example to .env and set GEMINI_API_KEY. The default is gemini-3.5-flash-lite; the sidebar can override it. Regenerate and retrain together after changing the dataset. The model checks its vocabulary/IDF fingerprint before use and fails clearly if it is stale.
 
-> Note: only add content you have the rights to use (your own notes,
-> datasheets you're licensed to reference, open-licensed material, etc.) —
-> avoid pasting large verbatim excerpts from copyrighted textbooks/articles.
+## Build and verify the browser app
 
-## 5. Swapping the Gemini model
+```sh
+python generate_dataset.py
+python train_topic_model.py
+python -m unittest -v test_pipeline
+python web/export_index.py _site
+node web/check-parity.mjs _site
+```
 
-The default model is set in `rag/gemini_client.py` (`DEFAULT_MODEL`) and can
-also be overridden per-session from the sidebar text box in the app. Check
-https://ai.google.dev/gemini-api/docs/models for the current list of model
-names available to your API key.
+The GitHub Actions workflow also copies web assets, dataset manifest/CSV, and model metrics into the Pages artifact. No API key is deployed. With no visitor key, the demo returns retrieved source passages and still runs topic classification. The knowledge explorer searches the indexed records without an API key.
 
-## 6. How retrieval works (quick summary)
+## Files to inspect
 
-1. `rag/preprocess.py` loads and cleans `knowledge_base.csv` with pandas/NumPy,
-   building a combined `search_text` field per record.
-2. `rag/retriever.py` fits a scikit-learn `TfidfVectorizer` over all records'
-   `search_text` once at startup, then for each user question computes cosine
-   similarity to find the top-k most relevant records.
-3. `rag/gemini_client.py` stuffs those retrieved records into the prompt as
-   `CONTEXT`, along with recent chat history, and sends it to Gemini with a
-   system instruction telling it to ground its answer in that context.
+- generate_dataset.py / expand_knowledge.py: reproducible dataset construction and calculations.
+- data/manifest.json / data/knowledge_base.csv: actual record count and provenance.
+- rag/retriever.py / rag/topic_model.py: TF-IDF plus PyTorch inference.
+- train_topic_model.py / models/metrics.json: training and measured validation results.
+- web/retriever.js / web/check-parity.mjs: exported model inference and Python parity checks.
 
-This keeps everything local and dependency-light — no vector database
-needed at this dataset size.
+Accurate portfolio wording: ?Built a hardware RAG chatbot over 1,049 deduplicated reference, lesson, code, and worked-example records; trained and evaluated a PyTorch topic classifier used for retrieval reranking.?

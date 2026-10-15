@@ -22,7 +22,8 @@ def load_knowledge_base(csv_path: str) -> pd.DataFrame:
     for col in ["category", "subcategory", "title", "content", "tags"]:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
-            df[col] = df[col].str.replace(r"\s+", " ", regex=True)
+            if col != "content":  # Preserve code indentation and line breaks.
+                df[col] = df[col].str.replace(r"\s+", " ", regex=True)
 
     # Drop exact duplicate content (keeps the pipeline safe if raw_sources
     # gets appended to more than once)
@@ -36,6 +37,7 @@ def load_knowledge_base(csv_path: str) -> pd.DataFrame:
         df["category"] + " | " + df["subcategory"] + " | " +
         df["title"] + ". " + df["content"] + " " + df["tags"]
     )
+    df["search_text"] = df["search_text"].str.replace(r"\s+", " ", regex=True)
 
     df = df.reset_index(drop=True)
     return df

@@ -58,7 +58,7 @@ function buildPrompt(context, history, userMessage) {
 }
 
 async function generateResponse(prompt) {
-  const model = $("model").value.trim() || "gemini-2.5-flash";
+  const model = $("model").value.trim() || "gemini-3.5-flash-lite";
   const res = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent",
     {
@@ -84,7 +84,7 @@ function offlineAnswer(records) {
   return (
     "**Offline mode.** No Gemini key is set, so here are the knowledge-base records the retriever matched:\n\n" +
     records
-      .map((r) => "- **" + r.title + "** _(" + r.category + " / " + r.subcategory + ", score " + r.score.toFixed(2) + ")_: " + r.content)
+      .map((r) => "- **" + r.title + "** _(" + r.category + " / " + r.subcategory + ", score " + r.score.toFixed(2) + ")_: " + r.content + "\n\n[Source](" + r.source_url + ")")
       .join("\n") +
     tail
   );
@@ -140,6 +140,11 @@ async function send(userMessage) {
   addMessage("user", userMessage);
 
   const records = state.retriever.retrieve(userMessage, Number($("top-k").value));
+  const topics=state.retriever.classify(userMessage);
+  if(topics) {
+    const [topic,score]=Object.entries(topics).sort((a,b)=>b[1]-a[1])[0];
+    $("topic-status").textContent=`Topic model: ${topic} (${Math.round(score*100)}% softmax score; not calibrated confidence).`;
+  } else $("topic-status").textContent="No indexed terms for topic classification.";
   const context = formatContext(records);
   const pending = addMessage("assistant", "", { pending: true, context: $("show-context").checked ? context : null });
 
@@ -213,6 +218,8 @@ async function main() {
     });
     state.retriever = createRetriever(index);
     $("kb-size").textContent = state.retriever.size.toLocaleString();
+    const metrics=state.retriever.model;
+    $("model-evidence").textContent=`PyTorch-trained topic reranking · ${(metrics.accuracy*100).toFixed(1)}% source-group holdout accuracy on ${metrics.validation_records} records. This measures topic labels, not answer correctness.`;
   } catch (e) {
     $("kb-size").textContent = "?";
     addMessage("assistant", "Could not load the knowledge base index (" + e.message + ").");
